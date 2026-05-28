@@ -1,0 +1,85 @@
+const float matrix[7][16] = {
+    {
+        0, 0, 0, 0, 
+        0, 0, 0, 0, 
+        0, 0, 0, 0, 
+        0, 0, 0, 0
+    }, 
+    {
+        1, 0, 1, 0, 
+        0, 0, 0, 0, 
+        1, 0, 1, 0, 
+        0, 0, 0, 0
+    }, 
+    {
+        0, 1, 0, 1, 
+        1, 0, 0, 0, 
+        0, 1, 0, 1, 
+        0, 0, 1, 0
+    }, 
+    {
+        1, 0, 1, 0, 
+        0, 1, 0, 1, 
+        1, 0, 1, 0, 
+        0, 1, 0, 1
+    }, 
+    {
+        0, 1, 0, 1, 
+        1, 0, 1, 0, 
+        0, 1, 1, 1, 
+        1, 0, 1, 0
+    }, 
+    {
+        0, 1, 0, 1, 
+        1, 1, 1, 1, 
+        0, 1, 0, 1, 
+        1, 1, 1, 1
+    }, 
+    {
+        1, 1, 1, 1, 
+        1, 1, 1, 1, 
+        1, 1, 1, 1, 
+        1, 1, 1, 1
+    }, 
+};
+
+float grayscale(Vector3 color) {
+    return 0.299 * color.x + 0.587 * color.y + 0.114 * color.z;
+}
+
+Vector3 vec3floor(Vector3 v) {
+    return { floor(v.x), floor(v.y), floor(v.z) };
+}
+
+Vector3 vec3ceil(Vector3 v) {
+    return { ceil(v.x), ceil(v.y), ceil(v.z) };
+}
+
+int Framebuffer::dither(Vector3 color, int x, int y) const {
+    // Downsamples the color
+    Vector3 down_color = vec3floor(color * FB_PALETTE_SIZE) / FB_PALETTE_SIZE;
+    Vector3 up_color   = vec3ceil(color * FB_PALETTE_SIZE) / FB_PALETTE_SIZE;
+
+    // Finds the nearest color within the selected palette
+    float down_dist = 1000.f;
+    float up_dist   = 1000.f;
+    int   down_idx  = 0;
+    int   up_idx    = 0;
+
+    for (int i = 0; i < FB_PALETTE_SIZE; ++i) {
+        float new_down_dist = Vector3Distance(vec_palette[i], down_color);
+        float new_up_dist = Vector3Distance(vec_palette[i], up_color);
+        if (new_up_dist < up_dist) {
+            up_dist = new_up_dist;
+            up_idx = i;
+        }
+        if (new_down_dist < down_dist) {
+            down_dist = new_down_dist;
+            down_idx = i;
+        }
+    }
+
+    // Uses the bayer matrix pattern
+    Vector3 delta = (vec_palette[up_idx] - vec_palette[down_idx]) * 7.f;
+    return (matrix[(int)round(grayscale(delta))][x % 4 + (y % 4)*4] ? up_idx : down_idx);
+}
